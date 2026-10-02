@@ -1,0 +1,6 @@
+{
+  "name": "Grid Guardian Network UI",
+  "description": "High-Density Vector Node Telemetry Array, Scalar Wave Modulation, Biometric Sync, and Grid Defense Orchestrator",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
