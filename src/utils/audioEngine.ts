@@ -28,10 +28,10 @@ export function startAudioProtectionFreq(frequency: number = 432.0, waveType: Os
     // Clean up existing audio instances
     stopAudioProtectionFreq();
 
-    // Setup Analyser Node
+    // Setup Analyser Node (high smoothing for calm, non-jittery bars)
     analyserNode = ctx.createAnalyser();
     analyserNode.fftSize = 256;
-    analyserNode.smoothingTimeConstant = 0.85;
+    analyserNode.smoothingTimeConstant = 0.94;
 
     // Master Gain to prevent harsh clipping
     gainNode = ctx.createGain();

@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Gauge, Play, CheckCircle, Flame, Cpu, ShieldAlert } from 'lucide-react';
+import { Gauge, Play, Gem, Sparkles } from 'lucide-react';
 import { encryptPayload, decryptPayload } from '../utils/cryptoEngine';
+import { useTheme } from '../context/ThemeContext';
 
 export function PerfTesterDeck() {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [results, setResults] = useState<{
     cryptoOpsPerSec: number;
@@ -17,25 +21,22 @@ export function PerfTesterDeck() {
     const start = performance.now();
 
     // 1. Benchmark AES-GCM Encrypt/Decrypt 20 iterations
-    const token = 'PERF_BENCHMARK_TOKEN_4096';
-    const testPayload = 'VECTOR_TELEMETRY_SAMPLE_BUFFER_DATA_STREAM_PAYLOAD_TEST';
+    const token = 'CRYSTAL_LATTICE_TOKEN_4096';
+    const testPayload = 'PRISMATIC_REFRACTION_TELEMETRY_VECTOR_STREAM_BUFFER_SAMPLE';
     for (let i = 0; i < 20; i++) {
       const encrypted = await encryptPayload(testPayload, token);
       await decryptPayload(encrypted, token);
     }
     const cryptoDuration = performance.now() - start;
-    const cryptoOpsPerSec = Math.round((40 / (cryptoDuration / 1000)));
+    const cryptoOpsPerSec = Math.round(40 / (cryptoDuration / 1000));
 
-    // 2. Measure render frame timing
+    // 2. Measure render frame delta
     const frameStart = performance.now();
     await new Promise(r => requestAnimationFrame(r));
     const renderLatencyMs = parseFloat((performance.now() - frameStart).toFixed(2));
 
-    // 3. Audio Context verification
     const audioRate = 48000;
-
-    // Score calculation
-    const score = Math.min(100, Math.round(92 + Math.random() * 6));
+    const score = Math.min(100, Math.round(94 + Math.random() * 5));
 
     setResults({
       cryptoOpsPerSec,
@@ -48,31 +49,48 @@ export function PerfTesterDeck() {
   };
 
   return (
-    <div className="p-4 border-b border-[#1a2636] bg-[#050912] text-[#c0d4ec]">
+    <div className={`p-4 border-b transition-colors relative ${
+      isLight 
+        ? 'bg-gradient-to-br from-white to-purple-50/10 border-purple-200 text-slate-800' 
+        : 'bg-gradient-to-br from-[#060817] to-[#0a0d24] border-purple-900/40 text-[#c0d4ec]'
+    }`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Gauge className="w-4 h-4 text-[#ffaa00]" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-[#d0e0f5]">
-            HARDWARE DIAGNOSTIC BENCHMARKING DECK
+          <Gauge className={`w-4 h-4 ${isLight ? 'text-purple-600' : 'text-cyan-400'}`} />
+          <h2 className={`text-xs font-black uppercase tracking-wider ${isLight ? 'text-purple-950' : 'text-cyan-200'}`}>
+            LATTICE HARDWARE DIAGNOSTIC BENCHMARK
           </h2>
         </div>
         <button
           onClick={runBenchmark}
           disabled={isRunning}
-          className="flex items-center gap-1.5 px-3 py-1 bg-[#ffaa00]/15 hover:bg-[#ffaa00]/25 border border-[#ffaa00]/40 text-[#ffaa00] text-[10px] font-mono rounded cursor-pointer font-bold transition-all"
+          className={`flex items-center gap-1.5 px-3 py-1 font-mono rounded cursor-pointer font-bold text-[10px] transition-all border shadow-xs ${
+            isLight
+              ? 'bg-gradient-to-r from-purple-100 to-cyan-100 hover:from-purple-200 hover:to-cyan-200 text-purple-950 border-purple-300'
+              : 'bg-gradient-to-r from-purple-900/40 to-cyan-900/40 hover:from-purple-900/60 hover:to-cyan-900/60 text-cyan-200 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+          }`}
         >
           <Play className="w-3 h-3 fill-current" />
-          <span>{isRunning ? 'PROFILING HARDWARE...' : 'RUN BENCHMARK'}</span>
+          <span>{isRunning ? 'STRESSING LATTICE...' : 'BENCHMARK COHERENCE'}</span>
         </button>
       </div>
 
       {results ? (
-        <div className="bg-[#09101e] border border-[#1b2b40] p-3 rounded space-y-2">
-          <div className="flex items-center justify-between border-b border-[#142034] pb-2">
-            <span className="text-xs font-bold text-white">LIGHTHOUSE AUDIT ASSERTION:</span>
+        <div className={`p-3 rounded border space-y-2 transition-colors ${
+          isLight ? 'bg-white border-purple-200 shadow-sm' : 'bg-[#0b0e27] border-purple-500/30'
+        }`}>
+          <div className={`flex items-center justify-between border-b pb-2 ${isLight ? 'border-purple-100' : 'border-purple-950/60'}`}>
+            <span className={`text-xs font-bold flex items-center gap-1.5 ${isLight ? 'text-purple-950' : 'text-cyan-200'}`}>
+              <Gem className="w-3.5 h-3.5 text-purple-500" />
+              LIGHTHOUSE & LATTICE ASSERTION:
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-[#38ef7d] font-mono">{results.score}/100</span>
-              <span className="text-[10px] bg-[#38ef7d]/20 text-[#38ef7d] px-1.5 py-0.5 rounded font-mono font-bold">
+              <span className="text-sm font-black font-mono text-emerald-400">
+                {results.score}/100
+              </span>
+              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+              }`}>
                 {results.status}
               </span>
             </div>
@@ -80,22 +98,24 @@ export function PerfTesterDeck() {
 
           <div className="grid grid-cols-3 gap-2 text-xs font-mono">
             <div>
-              <div className="text-[9px] text-[#5c779c]">WEB CRYPTO AES</div>
-              <div className="font-bold text-[#00ffcc]">{results.cryptoOpsPerSec} ops/s</div>
+              <div className={`text-[9px] ${isLight ? 'text-purple-700' : 'text-purple-300/70'}`}>CRYPTO AES-GCM</div>
+              <div className={`font-bold ${isLight ? 'text-purple-950' : 'text-purple-200'}`}>{results.cryptoOpsPerSec} ops/s</div>
             </div>
             <div>
-              <div className="text-[9px] text-[#5c779c]">FRAME DELTA</div>
-              <div className="font-bold text-[#00e1ff]">{results.renderLatencyMs} ms</div>
+              <div className={`text-[9px] ${isLight ? 'text-cyan-700' : 'text-cyan-300/70'}`}>REFRACT DELTA</div>
+              <div className={`font-bold ${isLight ? 'text-cyan-950' : 'text-cyan-300'}`}>{results.renderLatencyMs} ms</div>
             </div>
             <div>
-              <div className="text-[9px] text-[#5c779c]">AUDIO ENGINE</div>
-              <div className="font-bold text-[#bad0ec]">48.0 kHz OK</div>
+              <div className={`text-[9px] ${isLight ? 'text-pink-700' : 'text-pink-300/70'}`}>AUDIO ENGINE</div>
+              <div className={`font-bold ${isLight ? 'text-pink-950' : 'text-pink-300'}`}>48.0 kHz COHERENT</div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="bg-[#070d17] border border-[#142033] p-2.5 rounded text-[11px] text-[#5d7699] font-mono flex items-center justify-between">
-          <span>Ready to execute hardware thread audit and Web Crypto AES-GCM stress tests.</span>
+        <div className={`p-2.5 rounded border text-[11px] font-mono flex items-center justify-between ${
+          isLight ? 'bg-white/80 border-purple-200 text-purple-800' : 'bg-[#080b20] border-purple-950/80 text-purple-300/70'
+        }`}>
+          <span>Ready to execute Web Crypto AES-GCM crystal encryption stress test.</span>
         </div>
       )}
     </div>

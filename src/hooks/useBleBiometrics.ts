@@ -34,10 +34,10 @@ export function useBleBiometrics(): BleBiometricState {
         });
 
         setHrv((prev) => {
-          const delta = Math.round(Math.random() * 6 - 3);
+          const delta = Math.round(Math.random() * 4 - 2);
           return Math.min(85, Math.max(35, prev + delta));
         });
-      }, 1500);
+      }, 4000);
     } else {
       if (simulationIntervalRef.current) {
         clearInterval(simulationIntervalRef.current);
