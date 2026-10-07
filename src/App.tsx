@@ -10,17 +10,19 @@ import { PerfTesterDeck } from './components/PerfTesterDeck';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SoundEffectsController } from './components/SoundEffectsController';
+import { QuantumLatencyMonitor } from './components/QuantumLatencyMonitor';
 import { useBleBiometrics } from './hooks/useBleBiometrics';
 import { useIndexedDB } from './hooks/useIndexedDB';
 import { startAudioProtectionFreq, stopAudioProtectionFreq, getAnalyserNode } from './utils/audioEngine';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { Gem, Sparkles } from 'lucide-react';
+import { Gem, Sparkles, Orbit } from 'lucide-react';
 
 function GridGuardianApp() {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
   const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
+  const [isQuantumShieldActive, setIsQuantumShieldActive] = useState<boolean>(false);
   const [frequency, setFrequency] = useState<number>(432.0);
   const [waveType, setWaveType] = useState<OscillatorType>('sine');
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
@@ -75,6 +77,8 @@ function GridGuardianApp() {
   return (
     <div
       className={`min-h-screen pb-12 font-mono transition-colors duration-300 relative ${
+        isQuantumShieldActive ? 'quantum-shield-active' : ''
+      } ${
         isLight ? 'bg-gradient-to-br from-slate-100 via-purple-50/30 to-cyan-50/40 text-slate-900' : 'bg-gradient-to-br from-[#04060f] via-[#090b1c] to-[#040817] text-[#c0d4ec]'
       }`}
     >
@@ -148,11 +152,14 @@ function GridGuardianApp() {
             heartRateBpm={heartRate || 75}
             hrvMs={isBleConnected ? 62 : 45}
             isBleConnected={isBleConnected}
+            isQuantumShieldActive={isQuantumShieldActive}
+            onToggleQuantumShield={() => setIsQuantumShieldActive(prev => !prev)}
             onTriggerRoutine={handleActionTrigger}
           />
 
           <SyncMonitorDeck />
           <PerfTesterDeck />
+          <QuantumLatencyMonitor />
           <DataLogDashboard logs={wellnessLogs} pins={customPins} />
 
           {/* Biometric Connect Trigger */}

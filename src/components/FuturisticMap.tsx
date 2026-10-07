@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Crosshair, ZoomIn, ZoomOut, RotateCcw, Zap, Shield, Gem, Layers, Orbit, Sparkles, X, ShieldAlert, ShieldCheck, Activity, Info, Radio } from 'lucide-react';
+import { Crosshair, ZoomIn, ZoomOut, RotateCcw, Zap, Shield, Gem, Layers, Orbit, Sparkles, X, ShieldAlert, ShieldCheck, Activity, Info, Radio, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Supercluster, { type PointFeature } from 'supercluster';
 import { useTheme } from '../context/ThemeContext';
 import { playQuartzClick, playCrystalChime, playShieldLockTone, playVagalAlignmentTone } from '../utils/crystalSoundEngine';
+import { DroneTelemetryOverlay } from './DroneTelemetryOverlay';
 
 interface FuturisticMapProps {
   centerLat: number;
@@ -48,6 +49,8 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
   const [isShielding, setIsShielding] = useState<boolean>(false);
   const [radarAngle, setRadarAngle] = useState<number>(0);
   const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
+  const [isDroneOverlayActive, setIsDroneOverlayActive] = useState<boolean>(true);
+  const [isActiveScanEnabled, setIsActiveScanEnabled] = useState<boolean>(true);
 
   // Solfeggio / harmonic frequency mapping by crystal category
   const getCrystalFrequency = (crystalType: string): number => {
@@ -421,6 +424,48 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
             <Sparkles className="w-3 h-3 text-cyan-400" />
             <span className="hidden sm:inline">CRYSTAL PULSE</span>
           </button>
+
+          {/* Aerial Drone Patrol Overlay Toggle */}
+          <button
+            onClick={() => {
+              playQuartzClick();
+              setIsDroneOverlayActive(prev => !prev);
+            }}
+            className={`px-2 py-1 rounded border text-[10px] font-mono font-bold cursor-pointer transition-all flex items-center gap-1 ${
+              isDroneOverlayActive
+                ? isLight
+                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300 shadow-xs'
+                  : 'bg-emerald-950/70 text-emerald-300 border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                : isLight
+                  ? 'bg-slate-100 text-slate-500 border-slate-200 opacity-60'
+                  : 'bg-[#10132b] text-slate-500 border-purple-900/30 opacity-60'
+            }`}
+            title="Toggle Aerial Drone Patrol Overlay"
+          >
+            <Navigation className={`w-3 h-3 ${isDroneOverlayActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+            <span className="hidden sm:inline">DRONES (3)</span>
+          </button>
+
+          {/* Active Diagnostic Scan Wave Toggle */}
+          <button
+            onClick={() => {
+              playCrystalChime(1046.5);
+              setIsActiveScanEnabled(prev => !prev);
+            }}
+            className={`px-2 py-1 rounded border text-[10px] font-mono font-bold cursor-pointer transition-all flex items-center gap-1 ${
+              isActiveScanEnabled
+                ? isLight
+                  ? 'bg-cyan-100 text-cyan-900 border-cyan-300 shadow-xs'
+                  : 'bg-cyan-950/70 text-cyan-300 border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                : isLight
+                  ? 'bg-slate-100 text-slate-500 border-slate-200 opacity-60'
+                  : 'bg-[#10132b] text-slate-500 border-purple-900/30 opacity-60'
+            }`}
+            title="Toggle Deep-Array Active Scan Diagnostic Pulse"
+          >
+            <Radio className={`w-3 h-3 ${isActiveScanEnabled ? 'text-cyan-400 animate-pulse' : 'text-slate-500'}`} />
+            <span className="hidden sm:inline">SCAN</span>
+          </button>
           <button
             onClick={() => {
               playQuartzClick();
@@ -484,6 +529,45 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
             }}
           />
         </div>
+
+        {/* Active Deep-Array Diagnostic Sweeping Wave Pulse Effect */}
+        {isActiveScanEnabled && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-15">
+            <motion.div
+              animate={{
+                top: ['-25%', '125%'],
+                opacity: [0, 0.75, 0.75, 0]
+              }}
+              transition={{
+                duration: 5.5,
+                repeat: Infinity,
+                repeatDelay: 2.2,
+                ease: 'easeInOut'
+              }}
+              className="absolute left-0 right-0 h-16 pointer-events-none"
+              style={{
+                background: isLight
+                  ? 'linear-gradient(180deg, transparent 0%, rgba(168, 85, 247, 0.18) 40%, rgba(6, 182, 212, 0.3) 85%, transparent 100%)'
+                  : 'linear-gradient(180deg, transparent 0%, rgba(168, 85, 247, 0.22) 40%, rgba(34, 211, 238, 0.4) 85%, transparent 100%)',
+                boxShadow: isLight
+                  ? '0 0 25px rgba(6, 182, 212, 0.25)'
+                  : '0 0 35px rgba(6, 182, 212, 0.45)'
+              }}
+            >
+              <div className="absolute bottom-0 inset-x-0 h-[2px] bg-cyan-300 shadow-[0_0_12px_#06b6d4] opacity-90" />
+            </motion.div>
+          </div>
+        )}
+
+        {/* Real-Time Aerial Drone Patrol Telemetry Overlay */}
+        {isDroneOverlayActive && (
+          <DroneTelemetryOverlay
+            centerLat={centerLat}
+            centerLon={centerLon}
+            zoom={zoom}
+            isLight={isLight}
+          />
+        )}
 
         {/* Center Crystal Core Reticle with Staggered Matrix Spring & Pulse */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center z-10">
@@ -779,10 +863,13 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
                           }}
                           whileHover={{ scale: 1.35, transition: { duration: 0.15 } }}
                           whileTap={{ scale: 0.9 }}
+                          onMouseEnter={() => setHoveredNode(leaf)}
+                          onMouseLeave={() => setHoveredNode(null)}
                           onClick={(e) => {
                             e.stopPropagation();
                             playQuartzClick();
                             setSelectedNode(leaf);
+                            setModalNode(leaf);
                           }}
                           className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-40 select-none"
                           style={{ left: pos.left, top: pos.top }}
@@ -869,9 +956,12 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
                 }}
                 whileHover={{ scale: 1.25, transition: { duration: 0.2 } }}
                 whileTap={{ scale: 0.95 }}
+                onMouseEnter={() => setHoveredNode(singleNode)}
+                onMouseLeave={() => setHoveredNode(null)}
                 onClick={() => {
                   playQuartzClick();
                   setSelectedNode(singleNode);
+                  setModalNode(singleNode);
                   setSelectedClusterData(null);
                 }}
                 className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 select-none"
@@ -997,6 +1087,109 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
                 >
                   {singleNode.name.split(' ')[0]} ({singleNode.crystal_type})
                 </motion.div>
+
+                {/* 5. Custom Animated Cyber-Crystal Floating Tooltip */}
+                <AnimatePresence>
+                  {hoveredNode?.node_id === singleNode.node_id && (
+                    <motion.div
+                      initial={{ opacity: 0, y: parseFloat(pos.top) < 36 ? -8 : 8, scale: 0.92 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: parseFloat(pos.top) < 36 ? -6 : 6, scale: 0.92 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className={`absolute z-50 pointer-events-none w-64 p-3 rounded border-2 shadow-2xl backdrop-blur-md ${
+                        parseFloat(pos.top) < 36 ? 'top-full mt-3' : 'bottom-full mb-3'
+                      } ${
+                        parseFloat(pos.left) < 28
+                          ? 'left-0 translate-x-0'
+                          : parseFloat(pos.left) > 72
+                          ? 'right-0 -translate-x-0'
+                          : 'left-1/2 -translate-x-1/2'
+                      } ${
+                        isLight
+                          ? 'bg-white/95 border-purple-300 text-slate-800 shadow-[0_8px_24px_rgba(168,85,247,0.25)]'
+                          : 'bg-[#090d24]/95 border-cyan-400/80 text-[#d0e4ff] shadow-[0_0_24px_rgba(6,182,212,0.4)]'
+                      }`}
+                    >
+                      {/* Top Prismatic Corner Accent */}
+                      <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rotate-45 border ${
+                        isLight ? 'bg-purple-600 border-white' : 'bg-cyan-400 border-[#090d24]'
+                      }`} />
+
+                      {/* Header Badge */}
+                      <div className="flex items-center justify-between gap-1.5 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rotate-45 inline-block ${
+                            singleNode.is_shielded
+                              ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]'
+                              : 'bg-rose-500 shadow-[0_0_6px_#f43f5e]'
+                          }`} />
+                          <span className={`text-[10px] font-mono font-black tracking-wider ${
+                            isLight ? 'text-purple-900' : 'text-cyan-300'
+                          }`}>
+                            {singleNode.node_id}
+                          </span>
+                        </div>
+                        <span className={`text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                          isLight ? 'bg-purple-100 text-purple-900 border-purple-200' : 'bg-purple-950/80 text-cyan-200 border-purple-500/40'
+                        }`}>
+                          {singleNode.crystal_type}
+                        </span>
+                      </div>
+
+                      {/* Name */}
+                      <div className={`text-xs font-black leading-tight mb-1.5 ${
+                        isLight ? 'text-slate-900' : 'text-white'
+                      }`}>
+                        {singleNode.name}
+                      </div>
+
+                      {/* Classification */}
+                      <div className="flex items-center justify-between text-[9px] font-mono mb-2">
+                        <span className={`px-1.5 py-0.5 rounded font-bold border ${
+                          isLight ? 'bg-slate-100 text-purple-900 border-purple-200' : 'bg-[#12183c] text-cyan-300 border-cyan-900/60'
+                        }`}>
+                          {singleNode.classification}
+                        </span>
+                        <span className={`text-[8px] ${isLight ? 'text-slate-500' : 'text-purple-300/70'}`}>
+                          {singleNode.base_radius_meters}m Vector
+                        </span>
+                      </div>
+
+                      {/* Shield Status */}
+                      <div className={`p-1.5 rounded border flex items-center justify-between text-[9px] font-mono font-bold ${
+                        singleNode.is_shielded
+                          ? isLight
+                            ? 'bg-cyan-50 border-cyan-300 text-cyan-900'
+                            : 'bg-cyan-950/70 border-cyan-500/60 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                          : isLight
+                            ? 'bg-rose-50 border-rose-300 text-rose-900'
+                            : 'bg-rose-950/70 border-rose-500/60 text-rose-200 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
+                      }`}>
+                        <div className="flex items-center gap-1.5">
+                          {singleNode.is_shielded ? (
+                            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          ) : (
+                            <ShieldAlert className="w-3.5 h-3.5 text-rose-400 animate-pulse shrink-0" />
+                          )}
+                          <span>
+                            {singleNode.is_shielded ? 'QUARTZ SHIELD ACTIVE' : 'REFRACTION LEAK (0%)'}
+                          </span>
+                        </div>
+                        <span className="text-[8px] opacity-75">
+                          {singleNode.is_shielded ? '100% LOCK' : 'VULNERABLE'}
+                        </span>
+                      </div>
+
+                      {/* Click prompt */}
+                      <div className={`mt-2 pt-1.5 border-t text-[8px] font-mono text-center flex items-center justify-center gap-1 ${
+                        isLight ? 'border-purple-100 text-purple-700' : 'border-purple-900/40 text-cyan-400'
+                      }`}>
+                        <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                        <span>Click to open crystal modal terminal</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             );
           })}
@@ -1181,6 +1374,20 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
                   QUARTZ MATRIX LOCKED
                 </div>
               )}
+              {selectedNode.is_shielded && (
+                <button
+                  onClick={() => { playQuartzClick(); setModalNode(selectedNode); }}
+                  className={`px-3 py-1.5 font-bold font-mono text-xs rounded cursor-pointer flex items-center gap-1.5 transition-all border ${
+                    isLight
+                      ? 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-300'
+                      : 'bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border-purple-500/40'
+                  }`}
+                  title="Open Crystal Modal Telemetry Terminal"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>CRYSTAL MODAL</span>
+                </button>
+              )}
               <button
                 onClick={() => setSelectedNode(null)}
                 className={`text-xs px-2 py-1 cursor-pointer font-mono ${
@@ -1191,6 +1398,204 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
               </button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Crystal-Themed Modal Dialog */}
+      <AnimatePresence>
+        {modalNode && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Prismatic Backdrop Blur */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              onClick={() => {
+                playQuartzClick();
+                setModalNode(null);
+              }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+
+            {/* Faceted Modal Window */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 10 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+              className={`relative w-full max-w-lg rounded-xl border-2 p-5 shadow-2xl z-10 overflow-hidden ${
+                isLight
+                  ? 'bg-gradient-to-br from-white via-purple-50/50 to-cyan-50/60 border-purple-400 text-slate-800 shadow-[0_0_35px_rgba(168,85,247,0.3)]'
+                  : 'bg-gradient-to-br from-[#070b1e] via-[#0c122e] to-[#080d24] border-cyan-400/80 text-[#c0d4ec] shadow-[0_0_40px_rgba(6,182,212,0.35)]'
+              }`}
+            >
+              {/* Corner Facet Brackets */}
+              <div className={`absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 ${isLight ? 'border-purple-600' : 'border-cyan-400'}`} />
+              <div className={`absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 ${isLight ? 'border-purple-600' : 'border-cyan-400'}`} />
+              <div className={`absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 ${isLight ? 'border-purple-600' : 'border-cyan-400'}`} />
+              <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 ${isLight ? 'border-purple-600' : 'border-cyan-400'}`} />
+
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3 pb-3 mb-3 border-b border-purple-500/20">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-sm rotate-45 flex items-center justify-center border shadow-md ${
+                    modalNode.is_shielded
+                      ? 'bg-gradient-to-br from-cyan-500 to-purple-600 border-white text-white'
+                      : 'bg-gradient-to-br from-rose-500 to-pink-600 border-white text-white'
+                  }`}>
+                    <Gem className="w-4 h-4 -rotate-45" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                        isLight ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-purple-950/80 text-cyan-300 border-purple-500/50'
+                      }`}>
+                        {modalNode.node_id}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                        isLight ? 'bg-cyan-100 text-cyan-900 border-cyan-200' : 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40'
+                      }`}>
+                        {modalNode.crystal_type}
+                      </span>
+                    </div>
+                    <h3 className={`text-sm font-black mt-1 ${isLight ? 'text-purple-950' : 'text-white'}`}>
+                      {modalNode.name}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => { playQuartzClick(); setModalNode(null); }}
+                  className={`p-1.5 rounded-md border cursor-pointer transition-colors ${
+                    isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                      : 'bg-[#12163b] hover:bg-[#1a2152] text-cyan-300 border-purple-800/60'
+                  }`}
+                  title="Close Terminal (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Classification Banner */}
+              <div className={`p-2.5 rounded-lg border mb-3 font-mono ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0a0f2c] border-purple-900/40'
+              }`}>
+                <div className="flex items-center justify-between text-[10px] mb-1">
+                  <span className="text-cyan-400 font-bold">CLASSIFICATION</span>
+                  <span className={`font-bold ${isLight ? 'text-purple-900' : 'text-purple-300'}`}>
+                    {modalNode.classification}
+                  </span>
+                </div>
+                <div className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-purple-300/80'}`}>
+                  {getClassificationDescription(modalNode.classification)}
+                </div>
+              </div>
+
+              {/* Current Shield Status Hero Card */}
+              <div className={`p-3.5 rounded-lg border mb-3 font-mono ${
+                modalNode.is_shielded
+                  ? isLight
+                    ? 'bg-gradient-to-r from-cyan-50 to-purple-50 border-cyan-300 text-cyan-950'
+                    : 'bg-gradient-to-r from-cyan-950/60 to-purple-950/60 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                  : isLight
+                    ? 'bg-gradient-to-r from-rose-50 to-pink-50 border-rose-300 text-rose-950'
+                    : 'bg-gradient-to-r from-rose-950/60 to-purple-950/60 border-rose-500/80 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+              }`}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  {modalNode.is_shielded ? (
+                    <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0" />
+                  ) : (
+                    <ShieldAlert className="w-5 h-5 text-rose-400 animate-pulse shrink-0" />
+                  )}
+                  <div className="font-black text-xs">
+                    {modalNode.is_shielded
+                      ? 'QUARTZ SHIELD ACTIVE // 100% REFRACTION'
+                      : 'REFRACTION LEAK DETECTED // VULNERABLE'}
+                  </div>
+                </div>
+                <div className="text-[10px] opacity-80 leading-relaxed">
+                  {modalNode.is_shielded
+                    ? 'Scalar harmonic protection envelope nominal. 48-hour scalar resonance lock is actively dissipating external grid anomalies.'
+                    : 'Unprotected vector detected in sector array. External scalar anomalies may induce harmonic drift. Locking shield is strongly recommended.'}
+                </div>
+              </div>
+
+              {/* Telemetry Matrix Grid */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono mb-4">
+                <div className={`p-2 rounded border ${isLight ? 'bg-white border-slate-200' : 'bg-[#090d26] border-purple-900/30'}`}>
+                  <span className="text-cyan-400/80 block text-[9px]">HARMONIC FREQ</span>
+                  <span className="font-black text-xs">{getCrystalFrequency(modalNode.crystal_type)} Hz</span>
+                </div>
+                <div className={`p-2 rounded border ${isLight ? 'bg-white border-slate-200' : 'bg-[#090d26] border-purple-900/30'}`}>
+                  <span className="text-cyan-400/80 block text-[9px]">GRID RADIUS</span>
+                  <span className="font-black text-xs">{modalNode.base_radius_meters} METERS</span>
+                </div>
+                <div className={`p-2 rounded border ${isLight ? 'bg-white border-slate-200' : 'bg-[#090d26] border-purple-900/30'}`}>
+                  <span className="text-cyan-400/80 block text-[9px]">LATITUDE</span>
+                  <span className="font-black text-xs">{modalNode.latitude.toFixed(4)}° N</span>
+                </div>
+                <div className={`p-2 rounded border ${isLight ? 'bg-white border-slate-200' : 'bg-[#090d26] border-purple-900/30'}`}>
+                  <span className="text-cyan-400/80 block text-[9px]">LONGITUDE</span>
+                  <span className="font-black text-xs">{modalNode.longitude.toFixed(4)}° W</span>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-500/20 font-mono text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => playCrystalChime(getCrystalFrequency(modalNode.crystal_type))}
+                    className={`px-3 py-1.5 rounded border font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                      isLight
+                        ? 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-300'
+                        : 'bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border-purple-500/40'
+                    }`}
+                  >
+                    <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>TEST CHIME</span>
+                  </button>
+
+                  {!modalNode.is_shielded ? (
+                    <button
+                      onClick={() => handleClearNodeShield(modalNode)}
+                      disabled={isShielding}
+                      className={`px-3.5 py-1.5 rounded font-black cursor-pointer transition-all shadow-md flex items-center gap-1.5 ${
+                        isLight
+                          ? 'bg-gradient-to-r from-purple-700 to-cyan-700 text-white hover:opacity-90'
+                          : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-slate-950 hover:brightness-110 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5 fill-current" />
+                      <span>{isShielding ? 'LOCKING...' : 'REFRACT 48H SHIELD'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => playShieldLockTone()}
+                      className={`px-3 py-1.5 rounded border font-bold flex items-center gap-1.5 cursor-pointer ${
+                        isLight
+                          ? 'bg-cyan-50 text-cyan-900 border-cyan-300'
+                          : 'bg-cyan-950/70 text-cyan-300 border-cyan-500/50'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>MATRIX LOCKED</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => { playQuartzClick(); setModalNode(null); }}
+                  className={`px-3 py-1.5 rounded cursor-pointer ${
+                    isLight ? 'text-slate-600 hover:text-slate-900' : 'text-purple-400 hover:text-white'
+                  }`}
+                >
+                  DISMISS
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
