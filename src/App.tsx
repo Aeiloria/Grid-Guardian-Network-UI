@@ -11,6 +11,7 @@ import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SoundEffectsController } from './components/SoundEffectsController';
 import { QuantumLatencyMonitor } from './components/QuantumLatencyMonitor';
+import { SafeTelemetryWidget } from './components/SafeTelemetryWidget';
 import { useBleBiometrics } from './hooks/useBleBiometrics';
 import { useIndexedDB } from './hooks/useIndexedDB';
 import { startAudioProtectionFreq, stopAudioProtectionFreq, getAnalyserNode } from './utils/audioEngine';
@@ -160,6 +161,7 @@ function GridGuardianApp() {
           <SyncMonitorDeck />
           <PerfTesterDeck />
           <QuantumLatencyMonitor />
+          <SafeTelemetryWidget />
           <DataLogDashboard logs={wellnessLogs} pins={customPins} />
 
           {/* Biometric Connect Trigger */}

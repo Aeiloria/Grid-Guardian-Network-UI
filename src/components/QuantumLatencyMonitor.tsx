@@ -14,14 +14,21 @@ export function QuantumLatencyMonitor() {
   const isLight = theme === 'light';
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [history, setHistory] = useState<LatencyPoint[]>([]);
+  const [history, setHistory] = useState<LatencyPoint[]>(() => {
+    const now = Date.now();
+    return Array.from({ length: 24 }).map((_, i) => ({
+      time: now - (24 - i) * 800,
+      latencyMs: parseFloat((14.2 + Math.sin(i * 0.6) * 3.5 + (i % 3) * 1.2).toFixed(1)),
+      status: 'optimal' as const
+    }));
+  });
   const [currentLatency, setCurrentLatency] = useState<number>(14.2);
-  const [avgLatency, setAvgLatency] = useState<number>(16.5);
+  const [avgLatency, setAvgLatency] = useState<number>(15.8);
   const [minLatency, setMinLatency] = useState<number>(11.1);
   const [maxLatency, setMaxLatency] = useState<number>(24.8);
   const [jitter, setJitter] = useState<number>(1.2);
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [packetCount, setPacketCount] = useState<number>(0);
+  const [packetCount, setPacketCount] = useState<number>(24);
   const [waveGlowColor, setWaveGlowColor] = useState<'cyan' | 'purple' | 'emerald'>('cyan');
 
   // Real-time network telemetry probe loop
@@ -87,7 +94,7 @@ export function QuantumLatencyMonitor() {
     return () => clearInterval(timer);
   }, [isPaused]);
 
-  // High-performance Canvas rendering of the scrolling neon-glowing wave
+  // High-performance Canvas rendering of the scrolling neon-glowing wave with glowing gradient fill underneath
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -100,6 +107,7 @@ export function QuantumLatencyMonitor() {
       const width = canvas.width;
       const height = canvas.height;
 
+      // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
       // Background grid
@@ -128,88 +136,67 @@ export function QuantumLatencyMonitor() {
       }
 
       // Dynamic scale
-      const maxVal = Math.max(45, maxLatency * 1.25);
+      const maxVal = Math.max(45, ...history.map(p => p.latencyMs));
       const minVal = 0;
-      const range = maxVal - minVal;
+      const step = width / (history.length - 1 || 1);
 
-      const getX = (idx: number) => (idx / (history.length - 1)) * width;
-      const getY = (val: number) => height - ((val - minVal) / range) * (height - 18) - 8;
+      const getX = (idx: number) => idx * step;
+      const getY = (val: number) => height - (val / maxVal) * (height - 24) - 10;
 
-      // 1. Neon Glowing Under-Wave Gradient Fill
-      const areaGradient = ctx.createLinearGradient(0, 0, 0, height);
-      if (waveGlowColor === 'cyan') {
-        areaGradient.addColorStop(0, isLight ? 'rgba(6, 182, 212, 0.35)' : 'rgba(6, 182, 212, 0.4)');
-        areaGradient.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
-      } else if (waveGlowColor === 'purple') {
-        areaGradient.addColorStop(0, isLight ? 'rgba(168, 85, 247, 0.35)' : 'rgba(168, 85, 247, 0.4)');
-        areaGradient.addColorStop(1, 'rgba(168, 85, 247, 0.0)');
-      } else {
-        areaGradient.addColorStop(0, isLight ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.4)');
-        areaGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-      }
+      const waveColor =
+        waveGlowColor === 'cyan'
+          ? '#06b6d4'
+          : waveGlowColor === 'purple'
+            ? '#c084fc'
+            : '#10b981';
 
+      // 1. Create the glowing stroke path
       ctx.beginPath();
-      ctx.moveTo(0, height);
-      ctx.lineTo(0, getY(history[0].latencyMs));
+      ctx.strokeStyle = waveColor;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = waveColor;
+      ctx.shadowBlur = 12; // Adds a neon glow effect
 
-      for (let i = 0; i < history.length - 1; i++) {
-        const x0 = getX(i);
-        const y0 = getY(history[i].latencyMs);
-        const x1 = getX(i + 1);
-        const y1 = getY(history[i + 1].latencyMs);
-        const midX = (x0 + x1) / 2;
-        const midY = (y0 + y1) / 2;
-        ctx.quadraticCurveTo(x0, y0, midX, midY);
-      }
+      history.forEach((pt, index) => {
+        const x = getX(index);
+        const y = getY(pt.latencyMs);
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          const prevX = getX(index - 1);
+          const prevY = getY(history[index - 1].latencyMs);
+          const midX = (prevX + x) / 2;
+          const midY = (prevY + y) / 2;
+          ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+        }
+      });
 
       const lastX = getX(history.length - 1);
       const lastY = getY(history[history.length - 1].latencyMs);
       ctx.lineTo(lastX, lastY);
-      ctx.lineTo(width, height);
-      ctx.closePath();
-      ctx.fillStyle = areaGradient;
-      ctx.fill();
-
-      // 2. High-Density Neon Waveform Stroke
-      ctx.beginPath();
-      ctx.moveTo(0, getY(history[0].latencyMs));
-
-      for (let i = 0; i < history.length - 1; i++) {
-        const x0 = getX(i);
-        const y0 = getY(history[i].latencyMs);
-        const x1 = getX(i + 1);
-        const y1 = getY(history[i + 1].latencyMs);
-        const midX = (x0 + x1) / 2;
-        const midY = (y0 + y1) / 2;
-        ctx.quadraticCurveTo(x0, y0, midX, midY);
-      }
-      ctx.lineTo(lastX, lastY);
-
-      const strokeGradient = ctx.createLinearGradient(0, 0, width, 0);
-      if (waveGlowColor === 'cyan') {
-        strokeGradient.addColorStop(0, '#a855f7');
-        strokeGradient.addColorStop(0.5, '#06b6d4');
-        strokeGradient.addColorStop(1, '#22d3ee');
-        ctx.shadowColor = '#06b6d4';
-      } else if (waveGlowColor === 'purple') {
-        strokeGradient.addColorStop(0, '#3b82f6');
-        strokeGradient.addColorStop(0.5, '#c084fc');
-        strokeGradient.addColorStop(1, '#f472b6');
-        ctx.shadowColor = '#c084fc';
-      } else {
-        strokeGradient.addColorStop(0, '#06b6d4');
-        strokeGradient.addColorStop(0.5, '#10b981');
-        strokeGradient.addColorStop(1, '#34d399');
-        ctx.shadowColor = '#10b981';
-      }
-
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = strokeGradient;
-      ctx.shadowBlur = 14;
       ctx.stroke();
 
-      // Reset shadow for subsequent drawings
-      ctx.shadowBlur = 0;
+      // 2. Create the glowing gradient fill underneath
+      ctx.shadowBlur = 0; // Clear shadow before drawing fill
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      if (waveGlowColor === 'cyan') {
+        gradient.addColorStop(0, 'rgba(6, 182, 212, 0.45)'); // Cyan fade at top
+        gradient.addColorStop(1, 'rgba(6, 182, 212, 0.0)');  // Transparent at bottom
+      } else if (waveGlowColor === 'purple') {
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
+        gradient.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
+      } else {
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+      }
+
+      // Complete the path down to the bottom corners to form a closed shape for filling
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+
+      ctx.fillStyle = gradient;
+      ctx.fill();
 
       // 3. Current Head Beacon Dot with Ripple
       ctx.fillStyle = '#ffffff';
@@ -217,10 +204,12 @@ export function QuantumLatencyMonitor() {
       ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = strokeGradient;
+      ctx.strokeStyle = waveColor;
       ctx.lineWidth = 1.5;
+      ctx.shadowColor = waveColor;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(lastX, lastY, 7 + (Math.sin(Date.now() / 150) * 2), 0, Math.PI * 2);
+      ctx.arc(lastX, lastY, 7 + Math.sin(Date.now() / 150) * 2, 0, Math.PI * 2);
       ctx.stroke();
 
       animId = requestAnimationFrame(render);
@@ -228,7 +217,7 @@ export function QuantumLatencyMonitor() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [history, isLight, maxLatency, waveGlowColor]);
+  }, [history, isLight, waveGlowColor]);
 
   const handleBurstProbe = async () => {
     playCrystalChime(1318.5);

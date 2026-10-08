@@ -127,6 +127,10 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // 4. Ingestion APIs
+app.get('/api/maps/config', (_req: Request, res: Response) => {
+  res.status(200).json({ apiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '' });
+});
+
 app.get('/api/grid/status', async (_req: Request, res: Response) => {
   res.status(200).json(gridNodesStore);
 });
