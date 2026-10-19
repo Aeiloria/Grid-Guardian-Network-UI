@@ -134,7 +134,7 @@ function GridGuardianApp() {
               : 'bg-[#080b1f]/95 border-purple-500/30 shadow-[0_0_35px_rgba(168,85,247,0.2)]'
           }`}
         >
-          <MasterGridDashboard />
+          <MasterGridDashboard wellnessLogs={wellnessLogs} />
           <FuturisticMap centerLat={GATESVILLE_LAT} centerLon={GATESVILLE_LON} />
           <WaveAnalyzer analyserNode={analyser} isAudioActive={isAudioActive} />
 

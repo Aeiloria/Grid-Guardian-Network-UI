@@ -1,13 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Zap, Radio, Cpu, Sparkles, Gem, Activity } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Shield, Zap, Radio, Cpu, Sparkles, Gem, Activity, Heart, TrendingDown } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ReferenceLine
+} from 'recharts';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SoundEffectsController } from './SoundEffectsController';
 import { playQuartzClick, playCrystalChime } from '../utils/crystalSoundEngine';
+import { WellnessLog, useIndexedDB } from '../hooks/useIndexedDB';
 
-export function MasterGridDashboard() {
+interface MasterGridDashboardProps {
+  wellnessLogs?: WellnessLog[];
+}
+
+export function MasterGridDashboard({ wellnessLogs }: MasterGridDashboardProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
+
+  // Fallback to IndexedDB hook if not explicitly passed
+  const fallbackDb = useIndexedDB();
+  const logsToUse = wellnessLogs ?? fallbackDb.wellnessLogs ?? [];
 
   const [currentTime, setCurrentTime] = useState<string>('');
   const [gridIntegrity] = useState<number>(99.7);
@@ -15,16 +35,54 @@ export function MasterGridDashboard() {
   const [crystalHarmonic] = useState<number>(432.0);
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [activeChartMetric, setActiveChartMetric] = useState<'both' | 'delta'>('both');
 
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setCurrentTime(now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC');
+  // Prepare chronological telemetry dataset for Recharts
+  const chartData = useMemo(() => {
+    if (!logsToUse || logsToUse.length === 0) return [];
+
+    const sorted = [...logsToUse].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    return sorted.map((log, index) => {
+      const dateObj = new Date(log.timestamp);
+      const timeLabel = !isNaN(dateObj.getTime())
+        ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : `L-${index + 1}`;
+      const delta = (log.heartRateBefore ?? 0) - (log.heartRateAfter ?? 0);
+
+      return {
+        id: log.id,
+        index: index + 1,
+        time: timeLabel,
+        fullTime: !isNaN(dateObj.getTime()) ? dateObj.toLocaleTimeString() : log.timestamp,
+        type: log.type || 'BIOMETRIC_LOG',
+        before: log.heartRateBefore ?? 0,
+        after: log.heartRateAfter ?? 0,
+        delta: delta,
+        notes: log.notes || ''
+      };
+    });
+  }, [logsToUse]);
+
+  // Aggregate telemetry statistics
+  const telemetryStats = useMemo(() => {
+    if (chartData.length === 0) {
+      return { avgBefore: 0, avgAfter: 0, avgDelta: 0, maxDelta: 0 };
+    }
+    const sumBefore = chartData.reduce((acc, c) => acc + c.before, 0);
+    const sumAfter = chartData.reduce((acc, c) => acc + c.after, 0);
+    const sumDelta = chartData.reduce((acc, c) => acc + c.delta, 0);
+    const maxDelta = Math.max(...chartData.map(c => c.delta));
+
+    return {
+      avgBefore: Math.round(sumBefore / chartData.length),
+      avgAfter: Math.round(sumAfter / chartData.length),
+      avgDelta: Math.round(sumDelta / chartData.length),
+      maxDelta: Math.max(0, maxDelta)
     };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [chartData]);
 
   const runAiTacticalAnalysis = async () => {
     setIsAiLoading(true);
@@ -205,6 +263,226 @@ export function MasterGridDashboard() {
             EMERALD HARMONIC
           </div>
         </div>
+      </div>
+
+      {/* Wellness Heart Rate Fluctuations Recharts Line Chart */}
+      <div className={`p-3.5 rounded border mb-3.5 transition-all ${
+        isLight
+          ? 'bg-white/90 border-purple-200 shadow-xs'
+          : 'bg-[#080d22]/90 border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.12)]'
+      }`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <Heart className={`w-4 h-4 ${isLight ? 'text-rose-600' : 'text-rose-400'} animate-pulse`} />
+            <h2 className={`text-xs font-black uppercase tracking-wider ${isLight ? 'text-purple-950' : 'text-cyan-200'}`}>
+              WELLNESS HEART RATE FLUCTUATIONS // RECHARTS TELEMETRY
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/* View Mode Toggle */}
+            <div className={`p-0.5 rounded border text-[10px] font-mono flex items-center gap-1 ${
+              isLight ? 'bg-purple-50 border-purple-200' : 'bg-[#0c1233] border-purple-800/50'
+            }`}>
+              <button
+                onClick={() => {
+                  playQuartzClick();
+                  setActiveChartMetric('both');
+                }}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                  activeChartMetric === 'both'
+                    ? isLight
+                      ? 'bg-white text-purple-950 font-black shadow-xs'
+                      : 'bg-purple-900/70 text-cyan-200 font-bold border border-cyan-400/40'
+                    : isLight
+                      ? 'text-purple-700 hover:text-purple-950'
+                      : 'text-purple-300/70 hover:text-white'
+                }`}
+              >
+                INITIAL vs STABILIZED
+              </button>
+              <button
+                onClick={() => {
+                  playQuartzClick();
+                  setActiveChartMetric('delta');
+                }}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                  activeChartMetric === 'delta'
+                    ? isLight
+                      ? 'bg-white text-purple-950 font-black shadow-xs'
+                      : 'bg-purple-900/70 text-cyan-200 font-bold border border-cyan-400/40'
+                    : isLight
+                      ? 'text-purple-700 hover:text-purple-950'
+                      : 'text-purple-300/70 hover:text-white'
+                }`}
+              >
+                COHERENCE (Δ)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Telemetry Stat Pills */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          <div className={`p-1.5 px-2.5 rounded border text-center ${
+            isLight ? 'bg-rose-50/70 border-rose-200' : 'bg-rose-950/20 border-rose-500/25'
+          }`}>
+            <div className="text-[9px] font-mono text-rose-400 font-bold">AVG INITIAL HR</div>
+            <div className={`text-sm font-black font-mono ${isLight ? 'text-rose-900' : 'text-rose-300'}`}>
+              {telemetryStats.avgBefore > 0 ? `${telemetryStats.avgBefore} BPM` : '—'}
+            </div>
+          </div>
+
+          <div className={`p-1.5 px-2.5 rounded border text-center ${
+            isLight ? 'bg-cyan-50/70 border-cyan-200' : 'bg-cyan-950/20 border-cyan-500/25'
+          }`}>
+            <div className="text-[9px] font-mono text-cyan-400 font-bold">AVG STABILIZED HR</div>
+            <div className={`text-sm font-black font-mono ${isLight ? 'text-cyan-950' : 'text-cyan-300'}`}>
+              {telemetryStats.avgAfter > 0 ? `${telemetryStats.avgAfter} BPM` : '—'}
+            </div>
+          </div>
+
+          <div className={`p-1.5 px-2.5 rounded border text-center ${
+            isLight ? 'bg-emerald-50/70 border-emerald-200' : 'bg-emerald-950/20 border-emerald-500/25'
+          }`}>
+            <div className="text-[9px] font-mono text-emerald-400 font-bold">AVG VAGAL GAIN (Δ)</div>
+            <div className={`text-sm font-black font-mono ${isLight ? 'text-emerald-900' : 'text-emerald-300'}`}>
+              {telemetryStats.avgDelta > 0 ? `-${telemetryStats.avgDelta} BPM` : '—'}
+            </div>
+          </div>
+
+          <div className={`p-1.5 px-2.5 rounded border text-center ${
+            isLight ? 'bg-purple-50/70 border-purple-200' : 'bg-purple-950/20 border-purple-500/25'
+          }`}>
+            <div className="text-[9px] font-mono text-purple-400 font-bold">LOGGED SESSIONS</div>
+            <div className={`text-sm font-black font-mono ${isLight ? 'text-purple-950' : 'text-purple-200'}`}>
+              {chartData.length} SESSIONS
+            </div>
+          </div>
+        </div>
+
+        {/* Recharts Line Chart Container */}
+        {chartData.length === 0 ? (
+          <div className={`h-40 flex flex-col items-center justify-center rounded border font-mono text-xs text-center p-4 ${
+            isLight ? 'bg-purple-50/40 border-purple-200 text-slate-500' : 'bg-[#050716] border-purple-900/40 text-purple-300/70'
+          }`}>
+            <Activity className="w-6 h-6 mb-2 opacity-50 text-cyan-400 animate-pulse" />
+            <span>Awaiting wellness biometric telemetry in IndexedDB store.</span>
+            <span className="text-[10px] text-slate-400 mt-1">Execute a Yoga Stretch or Anuhazi Chant routine to log HR fluctuations.</span>
+          </div>
+        ) : (
+          <div className="w-full h-48 sm:h-52 font-mono">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={isLight ? 'rgba(147, 51, 234, 0.12)' : 'rgba(168, 85, 247, 0.18)'}
+                />
+                <XAxis
+                  dataKey="time"
+                  stroke={isLight ? '#7e22ce' : '#a855f7'}
+                  fontSize={10}
+                  tickLine={false}
+                />
+                <YAxis
+                  stroke={isLight ? '#7e22ce' : '#a855f7'}
+                  fontSize={10}
+                  domain={['dataMin - 5', 'dataMax + 5']}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const data = payload[0].payload;
+                    return (
+                      <div className={`p-2.5 rounded border text-xs font-mono shadow-xl backdrop-blur-md ${
+                        isLight ? 'bg-white/95 border-purple-200 text-slate-800' : 'bg-[#080c22]/95 border-purple-500/40 text-cyan-200'
+                      }`}>
+                        <div className="flex items-center justify-between gap-3 mb-1.5 pb-1 border-b border-purple-500/20">
+                          <span className="font-bold text-[11px] text-purple-400 uppercase flex items-center gap-1">
+                            <Heart className="w-3 h-3 text-rose-400" /> {data.type}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{data.fullTime}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-[10px] text-rose-400 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> Initial HR:
+                            </span>
+                            <span className="font-bold text-xs">{data.before} BPM</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-[10px] text-cyan-400 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" /> Stabilized HR:
+                            </span>
+                            <span className="font-bold text-xs">{data.after} BPM</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4 pt-1 border-t border-purple-500/20 text-emerald-400 font-bold">
+                            <span className="text-[10px]">Δ Vagal Coherence:</span>
+                            <span>-{data.delta} BPM</span>
+                          </div>
+                          {data.notes && (
+                            <div className="text-[9px] text-slate-400 italic pt-1 truncate max-w-[200px]">
+                              &ldquo;{data.notes}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }}
+                  iconType="circle"
+                />
+                <ReferenceLine
+                  y={70}
+                  stroke={isLight ? '#16a34a' : '#10b981'}
+                  strokeDasharray="4 4"
+                  label={{
+                    value: 'Baseline 70 BPM',
+                    fill: isLight ? '#16a34a' : '#34d399',
+                    fontSize: 9,
+                    position: 'insideBottomRight'
+                  }}
+                />
+
+                {activeChartMetric === 'both' ? (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="before"
+                      name="Initial HR (BPM)"
+                      stroke="#f43f5e"
+                      strokeWidth={2.5}
+                      dot={{ fill: '#f43f5e', r: 3.5, strokeWidth: 1, stroke: '#fff' }}
+                      activeDot={{ r: 6, fill: '#fda4af' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="after"
+                      name="Stabilized HR (BPM)"
+                      stroke="#06b6d4"
+                      strokeWidth={2.5}
+                      dot={{ fill: '#06b6d4', r: 3.5, strokeWidth: 1, stroke: '#fff' }}
+                      activeDot={{ r: 6, fill: '#67e8f9' }}
+                    />
+                  </>
+                ) : (
+                  <Line
+                    type="monotone"
+                    dataKey="delta"
+                    name="Vagal Reduction (Δ BPM)"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    dot={{ fill: '#10b981', r: 4, strokeWidth: 1, stroke: '#fff' }}
+                    activeDot={{ r: 6, fill: '#6ee7b7' }}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* AI Crystalline Intelligence Trigger */}
