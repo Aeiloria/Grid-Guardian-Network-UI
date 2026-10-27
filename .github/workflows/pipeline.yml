@@ -60,10 +60,33 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Report deploy start to Rollouts
+      id: rollouts
+      env:
+        CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        CHANGE_MONITOR_ENV: package_and_deploy_containers
+        CHANGE_MONITOR_SERVICE: grid-backend
+        DEPLOY_VERSION: ${{ github.sha }}
+        CHANGE_MONITOR_ACTOR: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        bash .github/scripts/rollouts-reporter.sh bootstrap
+        bash .github/scripts/rollouts-reporter.sh start
     - name: Build and Push Secure Backend Image Cluster
+      id: ship
       uses: docker/build-push-action@v4
       with:
         context: ./backend
         file: ./backend/Dockerfile
         push: true
         tags: ghcr.io/${{ github.repository }}/grid-backend:latest
+    - name: Report deploy finish to Rollouts
+      if: always()
+      env:
+        CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        CHANGE_MONITOR_ENV: package_and_deploy_containers
+        CHANGE_MONITOR_SERVICE: grid-backend
+        DEPLOY_VERSION: ${{ github.sha }}
+        CHANGE_MONITOR_ACTOR: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        ROLLOUTS_DEPLOYMENT: ${{ steps.rollouts.outputs.deployment }}
+        ROLLOUTS_OUTCOME: ${{ steps.ship.outcome }}
+      run: bash .github/scripts/rollouts-reporter.sh finish
