@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { playQuartzClick, playCrystalChime, playShieldLockTone, playVagalAlignmentTone } from '../utils/crystalSoundEngine';
 import { DroneTelemetryOverlay } from './DroneTelemetryOverlay';
 import { GoogleMapsMatrix } from './GoogleMapsMatrix';
+import { authorizedHeaders, getSessionToken } from '../utils/session';
 
 interface FuturisticMapProps {
   centerLat: number;
@@ -52,10 +53,7 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
   const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
   const [isDroneOverlayActive, setIsDroneOverlayActive] = useState<boolean>(true);
   const [isActiveScanEnabled, setIsActiveScanEnabled] = useState<boolean>(true);
-  const [mapEngine, setMapEngine] = useState<'google' | 'radar'>(() => {
-    const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-    return key.startsWith('AIzaSy') ? 'google' : 'radar';
-  });
+  const [mapEngine, setMapEngine] = useState<'google' | 'radar'>('radar');
 
   // Solfeggio / harmonic frequency mapping by crystal category
   const getCrystalFrequency = (crystalType: string): number => {
@@ -81,6 +79,24 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
       default: return 'Tactical Vector Telemetry Grid';
     }
   };
+
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch('/api/maps/config', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const key = typeof data?.apiKey === 'string' ? data.apiKey : '';
+        if (!cancelled && key.startsWith('AIzaSy')) {
+          setMapEngine('google');
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keyboard shortcut: Escape closes modal
   useEffect(() => {
@@ -269,13 +285,9 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
     setIsShielding(true);
     playShieldLockTone();
     try {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.demo_signature';
       const res = await fetch('/api/grid/clear-node', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+        headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id: node.node_id })
       });
       if (res.ok) {
@@ -312,15 +324,11 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
     setIsShielding(true);
     playShieldLockTone();
     try {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.demo_signature';
       await Promise.all(
         leaves.map(n =>
           fetch('/api/grid/clear-node', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
+            headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ id: n.node_id })
           }).catch(() => {})
         )
@@ -342,15 +350,11 @@ export function FuturisticMap({ centerLat, centerLon }: FuturisticMapProps) {
     setIsShielding(true);
     playShieldLockTone();
     try {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.demo_signature';
       await Promise.all(
         nodes.map(n =>
           fetch('/api/grid/clear-node', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
+            headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ id: n.node_id })
           }).catch(() => {})
         )

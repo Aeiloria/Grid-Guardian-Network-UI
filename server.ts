@@ -9,10 +9,34 @@ import { GoogleGenAI } from '@google/genai';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const jwtSecretFromEnv = process.env.JWT_SECRET;
+if (typeof jwtSecretFromEnv !== 'string' || jwtSecretFromEnv.trim() === '') {
+  console.error('JWT_SECRET is required. Refusing to start because JWT_SECRET is missing.');
+  process.exit(1);
+}
+const JWT_SECRET = jwtSecretFromEnv;
+
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_matrix_key_2099';
 const LOG_FILE_PATH = path.join(process.cwd(), 'latency_profile_matrix.log');
+const GEMINI_RATE_WINDOW_MS = 60_000;
+const GEMINI_RATE_MAX = 10;
+const geminiRateBuckets = new Map<string, number[]>();
+
+function readMapsApiKey(): string {
+  const candidates = [
+    process.env.GOOGLE_MAPS_API_KEY,
+    process.env.ARCGIS_API_KEY,
+    process.env.VITE_GOOGLE_MAPS_API_KEY,
+    process.env.VITE_ARCGIS_API_KEY
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value;
+    }
+  }
+  return '';
+}
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
@@ -101,34 +125,44 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// 3. Security Route Authentication Token Gate (with permissive preview token support)
+// 3. Security Route Authentication Token Gate
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+  const token = headerValue?.startsWith('Bearer ') ? headerValue.slice('Bearer '.length).trim() : '';
   if (!token) {
     return res.status(401).json({ error: 'Access token missing.' });
   }
 
-  // Allow standard demo token or verify via secret
-  if (token.includes('demo_signature') || token === 'DEVELOPMENT_PREVIEW_TOKEN') {
-    (req as any).user = { user_id: 'local_operator', role: 'GRID_COMMANDER' };
-    return next();
-  }
-
   jwt.verify(token, JWT_SECRET, (err: any, decodedUser: any) => {
-    if (err) {
-      // In development fallback, allow operator
-      (req as any).user = { user_id: 'local_operator', role: 'GRID_COMMANDER' };
-      return next();
+    if (err || !decodedUser || typeof decodedUser === 'string') {
+      return res.status(401).json({ error: 'Invalid or expired authorization signature.' });
     }
     (req as any).user = decodedUser;
     next();
   });
 };
 
+const rateLimitGemini = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user as { user_id?: string; sub?: string } | undefined;
+  const identity = user?.user_id || user?.sub || req.ip || 'anonymous';
+  const now = Date.now();
+  const hits = (geminiRateBuckets.get(identity) || []).filter((ts) => now - ts < GEMINI_RATE_WINDOW_MS);
+  if (hits.length >= GEMINI_RATE_MAX) {
+    return res.status(429).json({ error: 'Too many assessment requests. Try again shortly.' });
+  }
+  hits.push(now);
+  geminiRateBuckets.set(identity, hits);
+  next();
+};
+
 // 4. Ingestion APIs
-app.get('/api/maps/config', (_req: Request, res: Response) => {
-  res.status(200).json({ apiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '' });
+app.get('/api/maps/config', authenticateToken, (_req: Request, res: Response) => {
+  const apiKey = readMapsApiKey();
+  if (!apiKey) {
+    return res.status(503).json({ error: 'Map service is not configured.' });
+  }
+  res.status(200).json({ apiKey });
 });
 
 app.get('/api/grid/status', async (_req: Request, res: Response) => {
@@ -157,7 +191,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 });
 
 // 5. Gemini Vector Threat Assessment API
-app.post('/api/gemini/grid-assessment', async (req: Request, res: Response) => {
+app.post('/api/gemini/grid-assessment', authenticateToken, rateLimitGemini, async (req: Request, res: Response) => {
   const { gridIntegrity, shieldCapacity, activeRelays, coordinates } = req.body;
   
   if (process.env.GEMINI_API_KEY) {
@@ -182,8 +216,8 @@ Provide a concise, ultra-tactical 2-sentence assessment of scalar vector stabili
       });
 
       return res.status(200).json({ assessment: response.text });
-    } catch (err: any) {
-      console.warn('Gemini grid assessment error:', err);
+    } catch {
+      console.warn('Gemini grid assessment error');
     }
   }
 
