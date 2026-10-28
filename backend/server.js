@@ -4,9 +4,15 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 
+const jwtSecretFromEnv = process.env.JWT_SECRET;
+if (typeof jwtSecretFromEnv !== 'string' || jwtSecretFromEnv.trim() === '') {
+  console.error('JWT_SECRET is required. Refusing to start because JWT_SECRET is missing.');
+  process.exit(1);
+}
+const JWT_SECRET = jwtSecretFromEnv;
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_matrix_key_2099';
 const LOG_FILE_PATH = path.join(process.cwd(), 'latency_profile_matrix.log');
 
 app.use(cors({ origin: '*' }));

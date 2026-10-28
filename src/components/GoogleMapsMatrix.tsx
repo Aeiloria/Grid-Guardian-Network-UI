@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { playQuartzClick, playCrystalChime, playShieldLockTone } from '../utils/crystalSoundEngine';
+import { getSessionToken } from '../utils/session';
 import type { GridNode } from './FuturisticMap';
 
 interface GoogleMapsMatrixProps {
@@ -74,9 +75,8 @@ export function GoogleMapsMatrix({
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  // Retrieve API Key: client-side env first, then backend fallback
-  const [apiKey, setApiKey] = useState<string>(() => import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '');
-  const [apiKeyLoading, setApiKeyLoading] = useState<boolean>(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKeyLoading, setApiKeyLoading] = useState<boolean>(true);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [hasAuthError, setHasAuthError] = useState<boolean>(false);
 
@@ -102,25 +102,44 @@ export function GoogleMapsMatrix({
   ]);
 
   useEffect(() => {
-    if (!apiKey) {
-      fetch('/api/maps/config')
-        .then(res => (res.ok ? res.json() : null))
-        .then(data => {
-          if (data && data.apiKey) {
-            setApiKey(data.apiKey);
-          } else {
-            setKeyError('Google Maps API Key not detected in environment.');
-          }
-        })
-        .catch(err => {
-          console.warn('Could not load Maps config:', err);
-          setKeyError('Failed to load Maps configuration.');
-        })
-        .finally(() => setApiKeyLoading(false));
-    } else {
+    const token = getSessionToken();
+    if (!token) {
+      setKeyError('Sign in required before the map key can be loaded.');
       setApiKeyLoading(false);
+      return;
     }
-  }, [apiKey]);
+
+    let cancelled = false;
+    fetch('/api/maps/config', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (res) => {
+        if (res.status === 401) {
+          return { error: 'Sign in required before the map key can be loaded.' };
+        }
+        if (!res.ok) {
+          return { error: 'Google Maps API Key not detected in environment.' };
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (cancelled) return;
+        if (data && data.apiKey) {
+          setApiKey(data.apiKey);
+        } else {
+          setKeyError(data?.error || 'Google Maps API Key not detected in environment.');
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setKeyError('Failed to load Maps configuration.');
+      })
+      .finally(() => {
+        if (!cancelled) setApiKeyLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Real-time orbital drone telemetry animation
   useEffect(() => {
@@ -190,9 +209,11 @@ export function GoogleMapsMatrix({
         <p className="text-xs max-w-md mt-2 text-slate-400 leading-relaxed">
           {hasAuthError
             ? 'The Google Maps JavaScript API rejected the current key (InvalidKeyMapError). Please supply a standard Google Maps API key (format: AIzaSy...).'
-            : !isKeyFormatValid
-              ? 'Google Maps Platform requires a standard API key starting with "AIzaSy". The key in the current environment is an OAuth/session credential rather than a Google Maps API Key.'
-              : keyError || 'Please configure your VITE_GOOGLE_MAPS_API_KEY to activate live geospatial vector & satellite telemetry.'}
+            : keyError
+              ? keyError
+              : !isKeyFormatValid
+                ? 'Google Maps Platform requires a standard API key starting with "AIzaSy". The key in the current environment is an OAuth/session credential rather than a Google Maps API Key.'
+                : 'Sign in and configure the server-side GOOGLE_MAPS_API_KEY to activate live geospatial vector and satellite telemetry.'}
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
