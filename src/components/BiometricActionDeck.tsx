@@ -1,5 +1,6 @@
-import React from 'react';
-import { Heart, Activity, Volume2, ShieldCheck, Flame, Gem, ShieldAlert, Sparkles, Orbit } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Heart, Activity, Volume2, ShieldCheck, Flame, Gem, ShieldAlert, Sparkles, Orbit, Waves } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { playShieldLockTone, playVagalAlignmentTone, playBioPulseTone, playCrystalChime } from '../utils/crystalSoundEngine';
 
@@ -22,6 +23,11 @@ export function BiometricActionDeck({
 }: BiometricActionDeckProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
+
+  const beatPeriod = useMemo(() => {
+    const bpm = Math.max(45, Math.min(180, heartRateBpm || 75));
+    return 60 / bpm;
+  }, [heartRateBpm]);
 
   const handlePrism01 = () => {
     playShieldLockTone();
@@ -112,68 +118,132 @@ export function BiometricActionDeck({
 
       {/* Interactive Quantum Shield Mode Activator */}
       <div className="mb-3">
-        <button
+        <motion.button
+          layout
+          layoutId="quantum-shield-button"
           onClick={handleQuantumToggle}
+          animate={
+            isQuantumShieldActive
+              ? {
+                  scale: [1, 1.018, 0.995, 1],
+                  boxShadow: isLight
+                    ? [
+                        '0 0 15px rgba(6,182,212,0.25)',
+                        '0 0 28px rgba(168,85,247,0.45)',
+                        '0 0 18px rgba(6,182,212,0.3)',
+                        '0 0 15px rgba(6,182,212,0.25)'
+                      ]
+                    : [
+                        '0 0 20px rgba(6,182,212,0.35)',
+                        '0 0 35px rgba(168,85,247,0.6)',
+                        '0 0 24px rgba(6,182,212,0.4)',
+                        '0 0 20px rgba(6,182,212,0.35)'
+                      ]
+                }
+              : { scale: 1 }
+          }
+          transition={
+            isQuantumShieldActive
+              ? {
+                  duration: beatPeriod,
+                  repeat: Infinity,
+                  ease: [0.22, 1, 0.36, 1],
+                  times: [0, 0.28, 0.7, 1]
+                }
+              : { duration: 0.2 }
+          }
           className={`w-full p-3 rounded-lg border transition-all cursor-pointer relative overflow-hidden group shadow-md flex items-center justify-between ${
             isQuantumShieldActive
               ? isLight
-                ? 'bg-gradient-to-r from-cyan-100 via-purple-100 to-pink-100 border-cyan-400 text-purple-950 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
-                : 'bg-gradient-to-r from-[#0d1f3c] via-[#1f1238] to-[#260f2e] border-cyan-400 text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.4)]'
+                ? 'bg-gradient-to-r from-cyan-100 via-purple-100 to-pink-100 border-cyan-400 text-purple-950'
+                : 'bg-gradient-to-r from-[#0d1f3c] via-[#1f1238] to-[#260f2e] border-cyan-400 text-cyan-200'
               : isLight
                 ? 'bg-white hover:bg-slate-50 border-purple-200 text-slate-700 hover:border-purple-300'
                 : 'bg-[#090d24] hover:bg-[#0f1436] border-purple-900/50 text-[#c0d4ec] hover:border-purple-600/50'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-md flex items-center justify-center border transition-all ${
-              isQuantumShieldActive
-                ? isLight
-                  ? 'bg-cyan-500 text-white border-cyan-300 shadow-md animate-spin'
-                  : 'bg-cyan-400/20 text-cyan-300 border-cyan-400 shadow-[0_0_12px_#06b6d4] animate-spin'
-                : isLight
-                  ? 'bg-slate-100 text-slate-500 border-slate-200'
-                  : 'bg-[#12163b] text-purple-400 border-purple-800/40'
-            }`} style={{ animationDuration: '8s' }}>
+          {/* Subtle cardiac wave ripple overlay inside button when active */}
+          {isQuantumShieldActive && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-purple-500/15 to-transparent pointer-events-none"
+              animate={{
+                x: ['-100%', '100%']
+              }}
+              transition={{
+                duration: beatPeriod,
+                repeat: Infinity,
+                ease: 'easeInOut'
+              }}
+            />
+          )}
+
+          <div className="flex items-center gap-3 relative z-10">
+            <motion.div
+              layoutId="quantum-shield-orb-trigger"
+              className={`w-8 h-8 rounded-md flex items-center justify-center border transition-all ${
+                isQuantumShieldActive
+                  ? isLight
+                    ? 'bg-cyan-500 text-white border-cyan-300 shadow-md animate-spin'
+                    : 'bg-cyan-400/20 text-cyan-300 border-cyan-400 shadow-[0_0_12px_#06b6d4] animate-spin'
+                  : isLight
+                    ? 'bg-slate-100 text-slate-500 border-slate-200'
+                    : 'bg-[#12163b] text-purple-400 border-purple-800/40'
+              }`}
+              style={{ animationDuration: '8s' }}
+            >
               <Orbit className="w-4 h-4" />
-            </div>
+            </motion.div>
 
             <div className="text-left">
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-mono font-black tracking-widest ${
-                  isQuantumShieldActive
-                    ? isLight ? 'text-cyan-800' : 'text-cyan-400'
-                    : isLight ? 'text-slate-500' : 'text-purple-400'
-                }`}>
+                <span
+                  className={`text-[10px] font-mono font-black tracking-widest ${
+                    isQuantumShieldActive
+                      ? isLight ? 'text-cyan-800' : 'text-cyan-400'
+                      : isLight ? 'text-slate-500' : 'text-purple-400'
+                  }`}
+                >
                   QUANTUM SHIELD MODE
                 </span>
-                <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border ${
-                  isQuantumShieldActive
-                    ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
-                    : 'bg-slate-800/20 text-slate-400 border-slate-700/40'
-                }`}>
-                  {isQuantumShieldActive ? 'FIELD ENGAGED' : 'STANDBY'}
+                <span
+                  className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border ${
+                    isQuantumShieldActive
+                      ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
+                      : 'bg-slate-800/20 text-slate-400 border-slate-700/40'
+                  }`}
+                >
+                  {isQuantumShieldActive ? `PULSE ACTIVE · ${heartRateBpm} BPM · HRV ${hrvMs}ms` : 'STANDBY'}
                 </span>
               </div>
-              <div className="font-black text-xs mt-0.5">
-                {isQuantumShieldActive
-                  ? 'Rotating Iridescent Energy Field Active'
-                  : 'Activate 360° Iridescent Quantum Defense Field'}
+              <div className="font-black text-xs mt-0.5 flex items-center gap-1.5">
+                {isQuantumShieldActive ? (
+                  <>
+                    <Waves className="w-3 h-3 text-cyan-400 animate-pulse" />
+                    <span>Particle-Wave Envelope Synced to Heartbeat ({beatPeriod.toFixed(2)}s) & HRV Coherence ({hrvMs}ms)</span>
+                  </>
+                ) : (
+                  <span>Activate 360° Iridescent Particle-Wave Quantum Field</span>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className={`w-11 h-6 rounded-full p-0.5 transition-colors border ${
-              isQuantumShieldActive
-                ? 'bg-cyan-500 border-cyan-300'
-                : isLight ? 'bg-slate-200 border-slate-300' : 'bg-slate-800 border-slate-700'
-            }`}>
-              <div className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transform transition-transform ${
-                isQuantumShieldActive ? 'translate-x-5' : 'translate-x-0'
-              }`} />
+          <div className="flex items-center gap-2 relative z-10">
+            <div
+              className={`w-11 h-6 rounded-full p-0.5 transition-colors border ${
+                isQuantumShieldActive
+                  ? 'bg-cyan-500 border-cyan-300'
+                  : isLight ? 'bg-slate-200 border-slate-300' : 'bg-slate-800 border-slate-700'
+              }`}
+            >
+              <div
+                className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transform transition-transform ${
+                  isQuantumShieldActive ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
             </div>
           </div>
-        </button>
+        </motion.button>
       </div>
 
       {/* Crystal Routine Trigger Buttons */}

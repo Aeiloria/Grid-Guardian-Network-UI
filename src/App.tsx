@@ -12,6 +12,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { SoundEffectsController } from './components/SoundEffectsController';
 import { QuantumLatencyMonitor } from './components/QuantumLatencyMonitor';
 import { SafeTelemetryWidget } from './components/SafeTelemetryWidget';
+import { QuantumShieldOverlay } from './components/QuantumShieldOverlay';
 import { useBleBiometrics } from './hooks/useBleBiometrics';
 import { useIndexedDB } from './hooks/useIndexedDB';
 import { startAudioProtectionFreq, stopAudioProtectionFreq, getAnalyserNode } from './utils/audioEngine';
@@ -31,7 +32,7 @@ function GridGuardianApp() {
   const GATESVILLE_LAT = 31.4351;
   const GATESVILLE_LON = -97.7439;
 
-  const { heartRate, isBleConnected, connectGattDevice, disconnectGattDevice } = useBleBiometrics();
+  const { heartRate, hrv, isBleConnected, connectGattDevice, disconnectGattDevice } = useBleBiometrics();
   const { wellnessLogs, customPins, saveWellnessLog } = useIndexedDB();
 
   useEffect(() => {
@@ -151,7 +152,7 @@ function GridGuardianApp() {
 
           <BiometricActionDeck
             heartRateBpm={heartRate || 75}
-            hrvMs={isBleConnected ? 62 : 45}
+            hrvMs={hrv || (isBleConnected ? 62 : 45)}
             isBleConnected={isBleConnected}
             isQuantumShieldActive={isQuantumShieldActive}
             onToggleQuantumShield={() => setIsQuantumShieldActive(prev => !prev)}
@@ -186,6 +187,14 @@ function GridGuardianApp() {
           </div>
         </div>
       </div>
+
+      {/* High-Fidelity Heartbeat-Reactive Particle-Wave Quantum Shield Overlay */}
+      <QuantumShieldOverlay
+        isActive={isQuantumShieldActive}
+        heartRateBpm={heartRate || 75}
+        hrvMs={hrv || (isBleConnected ? 62 : 45)}
+        onDeactivate={() => setIsQuantumShieldActive(false)}
+      />
 
       <PwaUpdatePrompt />
     </div>
