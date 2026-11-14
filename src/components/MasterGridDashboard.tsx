@@ -15,6 +15,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SoundEffectsController } from './SoundEffectsController';
 import { playQuartzClick, playCrystalChime } from '../utils/crystalSoundEngine';
+import { authorizedHeaders } from '../utils/session';
 import { WellnessLog, useIndexedDB } from '../hooks/useIndexedDB';
 
 interface MasterGridDashboardProps {
@@ -91,7 +92,7 @@ export function MasterGridDashboard({ wellnessLogs }: MasterGridDashboardProps) 
     try {
       const response = await fetch('/api/gemini/grid-assessment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           gridIntegrity,
           shieldCapacity,

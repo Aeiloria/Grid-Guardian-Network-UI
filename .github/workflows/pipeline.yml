@@ -23,15 +23,7 @@ jobs:
       run: npm ci
 
     - name: Run Build Verification Audits
-      run: |
-        node -e "
-        const fs = require('fs');
-        if (!fs.existsSync('.env.local')) {
-          console.log('Creating mock verification stencil properties...');
-          fs.writeFileSync('.env.local', 'VITE_ARCGIS_API_KEY=CI_STATIC_STENCIL\n');
-        }
-        "
-        npm run build
+      run: npm run build
 
     - name: Run Headless Lighthouse Performance Assertions
       uses: treosh/lighthouse-ci-action@v10
